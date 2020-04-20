@@ -1,8 +1,13 @@
 import time
 import json
+import ssl
 import urllib.request
 import psutil
 from pypresence import Presence
+
+ct = ssl.create_default_context()
+ct.check_hostname = False
+ct.verify_mode = ssl.CERT_NONE
 
 CLIENT_ID = '699358451494682714'
 AOS_RPC = Presence(CLIENT_ID)
@@ -11,7 +16,7 @@ try:
     def fetch_server(cmdline_again, key):
         # Request json serverlist that buildandshoot hosts.
         serverlist_url = "https://services.buildandshoot.com/serverlist.json"
-        req = urllib.request.urlopen(serverlist_url)
+        req = urllib.request.urlopen(serverlist_url, context=ct)
         data = req.read()
         enc = req.info().get_content_charset('utf-8')
         json_obj = json.loads(data.decode(enc))
