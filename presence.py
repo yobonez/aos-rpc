@@ -74,13 +74,17 @@ try:
     print('Waiting for a process...')
     def scan_for_process():
         ps_pid = None
+        ps_cmdline = None
         while True:
             # Iterate thru processes to find one that matches our wanted one
             # and assign important variables for further functions that will be executed
             for p in psutil.process_iter(['name', 'pid', 'cmdline']):
                 if p.info['name'] == 'client.exe':
                     ps_pid = p.info['pid']
-                    ps_cmdline = p.info['cmdline'][1] # This is the server identifier "aos://XXXXXXXXXX:XXXXX"
+                    try:
+                        ps_cmdline = p.info['cmdline'][1] # This is the server identifier "aos://XXXXXXXXXX:XXXXX"
+                    except IndexError:
+                        scan_for_process()
                     keep_alive(ps_pid, ps_cmdline)
                 else:
                     time.sleep(0.05)
