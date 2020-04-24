@@ -5,18 +5,18 @@ import urllib.request
 import psutil
 from pypresence import Presence
 
-ct = ssl.create_default_context()
-ct.check_hostname = False
-ct.verify_mode = ssl.CERT_NONE
+SSLCONTEXT = ssl.create_default_context()
+SSLCONTEXT = False
+SSLCONTEXT.verify_mode = ssl.CERT_NONE
 
 CLIENT_ID = '699358451494682714'
 AOS_RPC = Presence(CLIENT_ID)
 AOS_RPC.connect()
 
-def fetch_server(cmdline_again, key):
+def fetch_data(cmdline_again, key):
     # Request json serverlist that buildandshoot hosts.
     serverlist_url = "https://services.buildandshoot.com/serverlist.json"
-    req = urllib.request.urlopen(serverlist_url, context=ct)
+    req = urllib.request.urlopen(serverlist_url, context=SSLCONTEXT)
     data = req.read()
     enc = req.info().get_content_charset('utf-8')
     json_obj = json.loads(data.decode(enc))
@@ -33,15 +33,22 @@ def fetch_server(cmdline_again, key):
     server_identifier = cmdline_again.strip("/")
 
     while True:
-        # If the identifier from the serverlist is valid with the current server player plays,
-        # get the requested key in function "fetch_server", compare it with key
+        # If the identifier from the serverlist matches with the current server player is on,
+        # get the requested by function "keep_alive" 'key' in function "fetch_data", compare it with key
         # from serverlist and return it.
         # For example key is the 'name' or 'game_mode'.
-        if json_obj[count]['identifier'] == server_identifier:
-            variable = json_obj[count][key]
-            return variable
-        else:
-            count += 1
+        try:
+            if json_obj[count]['identifier'] == server_identifier:
+                variable = json_obj[count][key]
+                return variable
+            else:
+                count += 1
+        # Handle an error when the server is not published to the master server
+        except IndexError:
+            if key == 'name':
+                return '(Server isn\'t published to the master server)'
+            else:
+                return '-'
 
 def keep_alive(pid, cmdline):
     try:
@@ -52,14 +59,15 @@ def keep_alive(pid, cmdline):
             if psutil.pid_exists(pid) is False:
                 print('Process was closed. Clearing presence.')
                 AOS_RPC.clear(pid=pid)
+                print('Waiting for process.')
                 scan_for_process()
-                print('Updating presence.')
-
-            server_name = fetch_server(cmdline, 'name') # request server name from serverlist
-            server_map = fetch_server(cmdline, 'map') # same for here but for map etc.
-            server_game_mode = fetch_server(cmdline, 'game_mode')
-            server_players_current = fetch_server(cmdline, 'players_current')
-            server_players_max = fetch_server(cmdline, 'players_max')
+            
+            print('Updating presence.')
+            server_name = fetch_data(cmdline, 'name') # request server name key from serverlist
+            server_map = fetch_data(cmdline, 'map') # same for here but for map etc.
+            server_game_mode = fetch_data(cmdline, 'game_mode')
+            server_players_current = fetch_data(cmdline, 'players_current')
+            server_players_max = fetch_data(cmdline, 'players_max')
 
             print(AOS_RPC.update(pid=pid,
                                  details=server_name,
@@ -77,7 +85,7 @@ def keep_alive(pid, cmdline):
         AOS_RPC.close()
         exit(0)
 
-print('Waiting for a process...')
+print('Waiting for process.')
 def scan_for_process():
     ps_pid = None
     ps_cmdline = None
