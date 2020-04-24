@@ -6,7 +6,7 @@ import psutil
 from pypresence import Presence
 
 SSLCONTEXT = ssl.create_default_context()
-SSLCONTEXT = False
+SSLCONTEXT.check_hostname = False
 SSLCONTEXT.verify_mode = ssl.CERT_NONE
 
 CLIENT_ID = '699358451494682714'
