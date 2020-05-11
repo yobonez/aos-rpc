@@ -2,7 +2,7 @@
 
 Discord rich presence made for Ace of Spades. Works with both versions 0.75 and 0.76. I'm not planning to make OpenSpades or other clients support.
 
-Requires python 3 with pip
+Requires python 3.4+ with pip
 
 ## Preview
 
