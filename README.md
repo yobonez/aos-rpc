@@ -34,3 +34,4 @@ Requires python 3 with pip
 
 + Detect if player actually joined the game (already choosed team and weapon etc.)
 + Make code less cancer and sphagetti
++ Make it more readable
