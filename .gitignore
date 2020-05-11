@@ -1,3 +1,5 @@
 *.code-workspace
 .*.swp*
 *.swp*
+logs/
+__pycache__
