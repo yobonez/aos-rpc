@@ -11,15 +11,15 @@ def uncaught_exception(excepttype, value, tb):
     logger.critical("Uncaught exception: ", exc_info=(excepttype, value, tb))
 sys.excepthook = uncaught_exception
 
-logger = logging.getLogger('aos-presence')
+logger = logging.getLogger('aos-rpc')
 logger.setLevel(logging.DEBUG)
 
-try:
-    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-presence.log'.format(timestamp),
+if os.path.isdir('./logs'):
+    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-rpo.log'.format(timestamp),
                                                        encoding='utf-8')
-except FileNotFoundError:
+else:
     os.mkdir('./logs')
-    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-presence.log'.format(timestamp),
+    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-rpc.log'.format(timestamp),
                                                        encoding='utf-8')
 fileHandler.setLevel(logging.DEBUG)
 

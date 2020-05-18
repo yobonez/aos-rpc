@@ -17,14 +17,15 @@ SSLCONTEXT.verify_mode = ssl.CERT_NONE
 CLIENT_ID = '699358451494682714'
 RPC = Presence(CLIENT_ID)
 
-def fetch_data(cmdline_again, key):
-    # If player plays on localhost then just pass this info and done
-    lhostmatch = cmdline_again.find("aos://16777343")
+def fetch_data(cmdline_again, keys):
+    identifier = cmdline_again.strip('/')
+
+    # Use find, cuz someone maybe will do a server on localhost with different port
+    lhostmatch = identifier.find("aos://16777343")
     if lhostmatch != -1:
-        if key == 'name':
-            return '(Playing on localhost)'
-        else:
-            return '-'
+        # If player plays on localhost then just pass this info and done
+        if keys[0] == 'name':
+            return ['(Playing on localhost)', '-', '-', '-', '-', '-']
     else:
         # Request json serverlist that buildandshoot hosts.
         serverlist_url = "https://services.buildandshoot.com/serverlist.json"
@@ -38,31 +39,19 @@ def fetch_data(cmdline_again, key):
         enc = req.info().get_content_charset('utf-8')
         serverlist = json.loads(data.decode(enc))
 
-        # Removing "/" at the end of the server identifier to avoid an index out of range error
-        # that is being thrown for some reason idk
-        server_identifier = cmdline_again.strip("/")
+        try:
+            for server_num in range(0, len(serverlist)+1):
+                presence_info = []
+                if serverlist[server_num]['identifier'] == identifier:
+                    current_server = serverlist[server_num]
+                    for variable in keys:
+                        presence_info.append(current_server[variable])
+                if len(presence_info) == 6:
+                    return presence_info
+        except IndexError:
+            return ['(Server is not broadcasting to master)', '-', '-', '-', '-', '-']
 
-        count = 0
-        while True:
-            # If the identifier from the serverlist matches with the current server player is on,
-            # get the requested by function "keep_alive" 'key' in function "fetch_data", compare it with key
-            # from serverlist and return it.
-            # For example key is the 'name' or 'game_mode'.
-            try:
-                if serverlist[count]['identifier'] == server_identifier:
-                    variable = serverlist[count][key]
-                    return variable
-                else:
-                    count += 1
-            # If the list is out of range and nothing found, that means the server is not broadcasting
-            # itself to master so we need to handle that
-            except IndexError:
-                if key == 'name':
-                    return '(Server isn\'t being broadcasted to master server)'
-                else:
-                    return '-'
-
-def keep_alive(pid, cmdline):
+def update_presence(pid, cmdline):
     playtime_start = time.time()
     current_map = None
     logger.info('Process found. Starting presence.')
@@ -74,22 +63,25 @@ def keep_alive(pid, cmdline):
             scan_for_process()
 
         logger.debug('Fetching server data')
-        server_name = fetch_data(cmdline, 'name') # request server name key from serverlist
-        server_map = fetch_data(cmdline, 'map') # same for here but for map etc.
-        server_game_mode = fetch_data(cmdline, 'game_mode')
-        server_players_current = fetch_data(cmdline, 'players_current')
-        server_players_max = fetch_data(cmdline, 'players_max')
-        server_protocol_version = fetch_data(cmdline, 'game_version')
+        server_info = fetch_data(cmdline, ['name', 'map', 'game_mode', 'players_current', 'players_max', 'game_version'])
 
-        if server_map != current_map:
-            # reset playtime if next map was changed
+        # Assign every element from returned table (just for readability)
+        server_name = server_info[0]
+        server_map = server_info[1]
+        server_game_mode = server_info[2]
+        server_players_current = server_info[3]
+        server_players_max = server_info[4]
+        server_game_version = server_info[5]
+
+        if server_name != current_map:
+            # reset playtime if map will change
             playtime_start = time.time()
             logger.debug("Playtime was reset due to map change")
-        current_map = server_map
+        current_map = server_name
 
         logger.info('Updating presence.')
         try:
-            current_weapon = gameinfo.update(pid=pid, version=server_protocol_version)
+            current_weapon = gameinfo.update(pid=pid, version=server_game_version)
             logger.debug(RPC.update(pid=pid,
                                     details=server_name,
                                     state='Map: {} ({})'.format(server_map, server_game_mode),
@@ -99,7 +91,7 @@ def keep_alive(pid, cmdline):
                                     small_image='ace_of_spades',
                                     small_text='Players: {}/{}, Version: {}'.format(server_players_current,
                                                                                     server_players_max,
-                                                                                    server_protocol_version)))
+                                                                                    server_game_version)))
         except pypresenceException.InvalidID:
             logger.warning('Discord is not running, or client ID isn\'t valid.')
             RPC.clear(pid=pid)
@@ -118,14 +110,14 @@ def scan_for_process():
     while True:
         # Iterate thru processes to find one that matches our wanted one
         # and assign important variables for further functions that will be executed
-        for p in psutil.process_iter(['name', 'pid', 'cmdline']):
-            if p.info['name'] == 'client.exe':
-                ps_pid = p.info['pid']
+        for proc in psutil.process_iter(['name', 'pid', 'cmdline']):
+            if proc.info['name'] == 'client.exe':
+                ps_pid = proc.info['pid']
                 try:
-                    ps_cmdline = p.info['cmdline'][1] # This is the server identifier "aos://XXXXXXXXXX:XXXXX"
+                    ps_cmdline = proc.info['cmdline'][1] # This is the server identifier "aos://XXXXXXXXXX:XXXXX"
                 except IndexError:
                     break
-                keep_alive(ps_pid, ps_cmdline)
+                update_presence(ps_pid, ps_cmdline)
             else:
                 time.sleep(0.05)
 
@@ -138,6 +130,7 @@ def connect_discord():
             scan_for_process()
         except pypresenceException.InvalidID:
             logger.info('Waiting for discord.')
+            time.sleep(5)
         except pypresenceException.InvalidPipe:
             time.sleep(5)
 

@@ -1,4 +1,4 @@
-# Ace of Spades discord rich presence ![GitHub issues](https://img.shields.io/github/issues/yobonez/aos-rpc?style=flat)
+# Ace of Spades discord rich presence ![GitHub issues](https://img.shields.io/github/issues/yobonez/aos-rpc?style=flat) ![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/yobonez/aos-rpc)
 
 Discord rich presence made for Ace of Spades. Works with both versions 0.75 and 0.76. I'm not planning to make OpenSpades or other clients support.
 

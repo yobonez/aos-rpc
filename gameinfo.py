@@ -1,6 +1,5 @@
 import sys
 import pymem
-from pymem import exception
 from logs import logger
 from presence import scan_for_process, RPC
 
@@ -32,14 +31,14 @@ def update(pid, version):
                 logger.info("Not a valid aos process.")
                 scan_for_process()
 
-        except exception.ProcessNotFound:
+        except pymem.exception.ProcessNotFound:
             logger.info("Process was closed. Clearing presence.")
             try:
                 RPC.clear(pid=pid)
             except AttributeError:
                 pass
             scan_for_process()
-        except exception.ProcessError:
+        except pymem.exception.ProcessError:
             logger.debug('Process was closed. Clearing presence.')
             try:
                 RPC.clear(pid=pid)
@@ -63,6 +62,6 @@ def update(pid, version):
         RPC.close()
         try:
             handle.close_process()
-        except exception.ProcessError:
+        except pymem.exception.ProcessError:
             sys.exit(0)
         sys.exit(0)
