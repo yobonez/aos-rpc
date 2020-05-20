@@ -15,7 +15,7 @@ logger = logging.getLogger('aos-rpc')
 logger.setLevel(logging.DEBUG)
 
 if os.path.isdir('./logs'):
-    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-rpo.log'.format(timestamp),
+    fileHandler = logging.handlers.RotatingFileHandler(filename='./logs/{} aos-rpc.log'.format(timestamp),
                                                        encoding='utf-8')
 else:
     os.mkdir('./logs')

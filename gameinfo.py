@@ -1,7 +1,7 @@
 import sys
 import pymem
 from logs import logger
-from presence import scan_for_process, RPC
+from rpc import scan_for_process, RPC
 
 tools = {
     0: ["largeimagekey_spade", "Digging blocks with a spade"],
