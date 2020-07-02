@@ -73,25 +73,32 @@ def update_presence(pid, cmdline):
         server_players_max = server_info[4]
         server_game_version = server_info[5]
 
-        if server_name != current_map:
+        if server_map != current_map:
             # reset playtime if map will change
             playtime_start = time.time()
             logger.debug("Playtime was reset due to map change")
-        current_map = server_name
+        current_map = server_map
 
         logger.info('Updating presence.')
         try:
             current_weapon = gameinfo.update(pid=pid, version=server_game_version)
+            if current_weapon[0] != 'ace_of_spades':
+                s_image = 'ace_of_spades'
+                s_text = 'Players: {}/{}, Version: {}'.format(server_players_current,
+                                                              server_players_max,
+                                                              server_game_version)
+            else:
+                s_image = None
+                s_text = None
+
             logger.debug(RPC.update(pid=pid,
                                     details=server_name,
                                     state='Map: {} ({})'.format(server_map, server_game_mode),
                                     start=playtime_start,
                                     large_image=current_weapon[0],
                                     large_text=current_weapon[1],
-                                    small_image='ace_of_spades',
-                                    small_text='Players: {}/{}, Version: {}'.format(server_players_current,
-                                                                                    server_players_max,
-                                                                                    server_game_version)))
+                                    small_image=s_image,
+                                    small_text=s_text))
         except pypresenceException.InvalidID:
             logger.warning('Discord is not running, or client ID isn\'t valid.')
             RPC.clear(pid=pid)
@@ -101,7 +108,7 @@ def update_presence(pid, cmdline):
             logger.info('Could not open process.')
             RPC.clear(pid=pid)
             scan_for_process()
-        time.sleep(10)
+        time.sleep(7.5)
 
 def scan_for_process():
     logger.info('Waiting for aos client.')
