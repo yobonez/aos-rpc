@@ -88,28 +88,39 @@ GUNS = {
 }
 
 def update(pid, version):
-    def return_weapon_or_tool(tool_value):
-        if tool_value == 0:
-            current_tool = TOOLS[tool_value]
-        elif tool_value == 1:
-            current_tool = TOOLS[tool_value]
-        elif tool_value == 2:
+    def return_weapon_or_tool(tool_id, ply_intel_status):
+        holds_intel = False
+
+        if tool_id == 0:
+            current_tool = TOOLS[tool_id]
+        elif tool_id == 1:
+            current_tool = TOOLS[tool_id]
+        elif tool_id == 2:
             if version == '0.75':
                 current_tool = GUNS[handle.read_int(base_addr+WEAPON_ADDRS_PER_ID_75[ply_id_75])]
             else:
                 current_tool = GUNS[handle.read_int(base_addr+WEAPON_ADDRS_PER_ID_76[ply_id_76])]
-        elif tool_value == 3:
-            current_tool = TOOLS[tool_value]
-        return current_tool
+        elif tool_id == 3:
+            current_tool = TOOLS[tool_id]
+
+        if version == '0.75':
+            if ply_intel_status[0] == ply_id_75 or ply_intel_status[1] == ply_id_75: # if team1 id == playerId or team2 id == playerId
+                holds_intel = True
+        else:
+            if ply_intel_status[0] == ply_id_76 or ply_intel_status[1] == ply_id_76:
+                holds_intel = True
+
+        return [current_tool, holds_intel]
+
     try:
         try:
             handle = pymem.Pymem('client.exe')
-            logger.debug('Getting base address.')
-            base_addr = handle.process_base.lpBaseOfDll
-
             if handle.process_id != pid:
                 logger.info("Not a valid aos process.")
                 scan_for_process()
+            else:
+                logger.debug('Getting base address.')
+                base_addr = handle.process_base.lpBaseOfDll
 
         except pymem.exception.ProcessNotFound:
             logger.info("Process was closed. Clearing presence.")
@@ -118,6 +129,7 @@ def update(pid, version):
             except AttributeError:
                 pass
             scan_for_process()
+
         except pymem.exception.ProcessError:
             logger.debug('Process was closed. Clearing presence.')
             try:
@@ -128,20 +140,24 @@ def update(pid, version):
 
         ply_id_75 = handle.read_int(base_addr+0x13B1CF0)
         ply_id_76 = handle.read_int(base_addr+0x13B19B0)
-        tool_value_75 = handle.read_int(base_addr+0x13CF808)
-        tool_value_76 = handle.read_int(base_addr+0x13CF488)
+        tool_id_75 = handle.read_int(base_addr+0x13CF808)
+        tool_id_76 = handle.read_int(base_addr+0x13CF488)
+        ply_intel_status_team1_75 = handle.read_int(base_addr+0x13CF958) # it gives the ID of a player that holds an intel from team 1
+        ply_intel_status_team2_75 = handle.read_int(base_addr+0x13CF924) # < - same here but team 2
+        ply_intel_status_team1_76 = handle.read_int(base_addr+0x13CF5D8) # here same thing but for another version
+        ply_intel_status_team2_76 = handle.read_int(base_addr+0x13CF5A4)
 
         if version == '0.75':
-            curr_tool = return_weapon_or_tool(tool_value_75)
+            ply_status = return_weapon_or_tool(tool_id_75, [ply_intel_status_team1_75, ply_intel_status_team2_75])
         elif version == '0.76':
-            curr_tool = return_weapon_or_tool(tool_value_76)
+            ply_status = return_weapon_or_tool(tool_id_76, [ply_intel_status_team1_76, ply_intel_status_team2_76])
         else:
-            curr_tool = ["ace_of_spades", "(Server is not broadcasting to master)"]
+            ply_status = [["ace_of_spades", "(Server is not broadcasting to master server)"], None]
         handle.close_process()
-        return curr_tool
+        return ply_status
 
     except KeyboardInterrupt:
-        logger.warning('Interrupt caught. Closing.')
+        logger.warning('KeyboardInterrupt caught. Closing.')
         RPC.clear(pid=pid)
         RPC.close()
         try:
