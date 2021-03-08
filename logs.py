@@ -5,7 +5,12 @@ import sys
 import os
 import zipfile
 
-files = os.listdir("logs/")
+try:
+    files = os.listdir("logs/")
+except FileNotFoundError:
+    os.mkdir("logs/")
+    files = os.listdir("logs/")
+    
 for file_name in files:
     file_name_new = 'logs/' + file_name
 
