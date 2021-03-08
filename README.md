@@ -37,5 +37,5 @@ Requires python 3.4+
 
 ## TODO's
 
-+ [ ] Detect if player actually joined the game (already choosed team and weapon etc.)
++ [x] Detect if player actually joined the game (already choosed team and weapon etc.)
 + [ ] Make code more readable

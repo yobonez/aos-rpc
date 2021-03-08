@@ -6,7 +6,7 @@ import sys
 import psutil
 from pypresence import exceptions as pypresenceException
 from pypresence import Presence
-from pymem import exception as pymemException
+import pymem
 import gameinfo
 from logs import logger
 
@@ -16,6 +16,17 @@ SSLCONTEXT.verify_mode = ssl.CERT_NONE
 
 CLIENT_ID = '699358451494682714'
 RPC = Presence(CLIENT_ID)
+
+def clear_rpc(rpc_pid):
+    '''for two exceptions in update_presence() to keep code a bit cleaner'''
+
+    logger.info("Process was closed. Clearing presence.")
+    try:
+        RPC.clear(pid=rpc_pid)
+    except AttributeError:
+        pass
+    scan_for_process()
+
 
 def fetch_data(cmdline_again, keys):
     identifier = cmdline_again.strip('/')
@@ -52,7 +63,7 @@ def fetch_data(cmdline_again, keys):
         except IndexError:
             return ['(Server is not broadcasting to master server)', '-', '-', '-', '-', '-']
 
-def update_presence(pid, cmdline):
+def update_presence(pid, cmdline, p_handle):
     playtime_start = time.time()
     current_map = None
 
@@ -63,7 +74,15 @@ def update_presence(pid, cmdline):
         if psutil.pid_exists(pid) is False:
             logger.info('Process was closed. Clearing presence.')
             RPC.clear(pid=pid)
-            scan_for_process()
+            scan_for_process() 
+
+        try:
+            logger.debug('Getting base address.')
+            base_addr = p_handle.process_base.lpBaseOfDll
+        except pymem.exception.ProcessNotFound:
+            clear_rpc(pid)
+        except pymem.exception.ProcessError:
+            clear_rpc(pid)
 
         logger.debug('Fetching server data')
         server_info = fetch_data(cmdline, ['name', 'map', 'game_mode', 'players_current', 'players_max', 'game_version'])
@@ -78,19 +97,21 @@ def update_presence(pid, cmdline):
         if server_map != current_map:
             # reset the "time elapsed" when map changes
             playtime_start = time.time()
-            logger.debug("Playtime was reset due to map change")
+            logger.debug("Map changed. Resetting \"time elapsed\".")
         current_map = server_map
 
         logger.info('Updating presence.')
 
         try:
-            player_status = gameinfo.update(pid=pid, version=server_game_version)
+            player_status = gameinfo.update(pid=pid, version=server_game_version, proc_handle=p_handle, base_address=base_addr)
 
             if player_status[0][0] != 'ace_of_spades':
                 s_image = 'ace_of_spades'
                 s_additional_text = ''
 
-                if player_status[1]: # if holds_intel from gameinfo.update() is true
+                if server_game_mode in ('tow', 'tc'):
+                    pass
+                elif player_status[1]: # if holds_intel from gameinfo.update() is true
                     s_image = 'smallimagekey_intel'
                     s_additional_text = 'Holds enemy intel!'
 
@@ -115,7 +136,7 @@ def update_presence(pid, cmdline):
             RPC.clear(pid=pid)
             RPC.close()
             connect_discord()
-        except pymemException.CouldNotOpenProcess:
+        except pymem.exception.CouldNotOpenProcess:
             logger.info('Could not open process.')
             RPC.clear(pid=pid)
             scan_for_process()
@@ -137,10 +158,18 @@ def scan_for_process():
 
                 try:
                     ps_cmdline = proc.info['cmdline'][1] # This is the server identifier "aos://XXXXXXXXXX:XXXXX"
+
+                    handle = pymem.Pymem('client.exe')
+                    if handle.process_id != ps_pid:
+                        logger.info("Not a valid aos process.")
+                        return
+                        
                 except IndexError:
                     break
+                except pymem.exception.ProcessNotFound:
+                    break
 
-                update_presence(ps_pid, ps_cmdline)
+                update_presence(ps_pid, ps_cmdline, handle)
             else:
                 time.sleep(0.05)
 
@@ -152,7 +181,7 @@ def connect_discord():
             logger.info('Connected to Discord.')
             scan_for_process()
         except pypresenceException.InvalidID:
-            logger.info('Waiting for discord.')
+            logger.info('Discord is not running, or client ID isn\'t valid.')
             time.sleep(5)
         except pypresenceException.InvalidPipe:
             time.sleep(5)
