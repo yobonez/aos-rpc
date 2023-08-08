@@ -3,3 +3,4 @@
 *.swp*
 logs/
 __pycache__
+venv/

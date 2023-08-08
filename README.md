@@ -4,7 +4,7 @@ Discord rich presence made for classic client of Ace of Spades 0.75/76. I'm not 
 
 Ready to run exe file compiled using pyinstaller is at [releases](https://github.com/yobonez/aos-rpc/releases) page.
 
-Requires python 3.4+
+Requires python 3.8 and above
 
 ## Preview
 
@@ -30,8 +30,7 @@ Requires python 3.4+
   + Add task
   + Set it to trigger on login
   + Action (start a program):
-    + Program/script: (path to `pythonw.exe` interpreter)
-    + Add arguments: (path to `rpc.py` script)
+    + Program/script: (path to `run.bat`)
     + Start in: (path to folder with `rpc.py` in it)
     + Save task settings and run
 

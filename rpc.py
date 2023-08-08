@@ -17,6 +17,8 @@ SSLCONTEXT.verify_mode = ssl.CERT_NONE
 CLIENT_ID = '699358451494682714'
 RPC = Presence(CLIENT_ID)
 
+join_button = True
+
 def clear_rpc(rpc_pid):
     '''for two exceptions in update_presence() to keep code a bit cleaner'''
 
@@ -25,16 +27,19 @@ def clear_rpc(rpc_pid):
         RPC.clear(pid=rpc_pid)
     except AttributeError:
         pass
-    scan_for_process()
+    return
 
 
 def fetch_data(cmdline_again, keys):
+    global join_button
+    join_button = True
     identifier = cmdline_again.strip('/')
 
     lhostmatch = identifier.find("aos://16777343")
 
     if lhostmatch != -1 and keys[0] == 'name':
         # If player plays on localhost then just pass this info and done
+        join_button = False
         return ['(Playing on localhost)', '-', '-', '-', '-', '-']
     else:
         try:
@@ -61,6 +66,7 @@ def fetch_data(cmdline_again, keys):
                 if len(presence_info) == 6:
                     return presence_info
         except IndexError:
+            join_button = False
             return ['(Server is not broadcasting to master server)', '-', '-', '-', '-', '-']
 
 def update_presence(pid, cmdline, p_handle):
@@ -74,7 +80,7 @@ def update_presence(pid, cmdline, p_handle):
         if psutil.pid_exists(pid) is False:
             logger.info('Process was closed. Clearing presence.')
             RPC.clear(pid=pid)
-            scan_for_process() 
+            return
 
         try:
             logger.debug('Getting base address.')
@@ -130,7 +136,8 @@ def update_presence(pid, cmdline, p_handle):
                                     large_image=player_status[0][0],
                                     large_text=player_status[0][1],
                                     small_image=s_image,
-                                    small_text=s_text))
+                                    small_text=s_text,
+                                    buttons = [{"label": "Join", "url": cmdline}, {"label": "Server list", "url": "http://aos.acornserver.com"}] if join_button else None ))
         except pypresenceException.InvalidID:
             logger.warning('Discord is not running, or client ID isn\'t valid.')
             RPC.clear(pid=pid)
@@ -139,7 +146,11 @@ def update_presence(pid, cmdline, p_handle):
         except pymem.exception.CouldNotOpenProcess:
             logger.info('Could not open process.')
             RPC.clear(pid=pid)
-            scan_for_process()
+            return
+        except pypresenceException.ServerError:
+            logger.warning('Button load fail')
+            RPC.clear(pid=pid)
+            return
 
         time.sleep(7.5)
 
@@ -168,6 +179,8 @@ def scan_for_process():
                     break
                 except pymem.exception.ProcessNotFound:
                     break
+                except pymem.exception.CouldNotOpenProcess:
+                    break
 
                 update_presence(ps_pid, ps_cmdline, handle)
             else:
@@ -184,6 +197,8 @@ def connect_discord():
             logger.info('Discord is not running, or client ID isn\'t valid.')
             time.sleep(5)
         except pypresenceException.InvalidPipe:
+            time.sleep(5)
+        except pypresenceException.PipeClosed:
             time.sleep(5)
 
 if __name__ == "__main__":
