@@ -147,8 +147,8 @@ def update_presence(pid, cmdline, p_handle):
             logger.info('Could not open process.')
             RPC.clear(pid=pid)
             return
-        except pypresenceException.ServerError:
-            logger.warning('Button load fail')
+        except pypresenceException.ServerError as e:
+            logger.warning('Button load fail {}'.format(e.with_traceback()))
             RPC.clear(pid=pid)
             return
 
@@ -193,13 +193,15 @@ def connect_discord():
             RPC.connect()
             logger.info('Connected to Discord.')
             scan_for_process()
+        except pypresenceException.DiscordNotFound:
+            time.sleep(3)
         except pypresenceException.InvalidID:
             logger.info('Discord is not running, or client ID isn\'t valid.')
-            time.sleep(5)
+            time.sleep(3)
         except pypresenceException.InvalidPipe:
-            time.sleep(5)
+            time.sleep(3)
         except pypresenceException.PipeClosed:
-            time.sleep(5)
+            time.sleep(3)
 
 if __name__ == "__main__":
     try:
